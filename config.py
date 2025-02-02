@@ -196,10 +196,10 @@ class DPOConfig(TrainingArguments):
 
 @dataclass
 class DPOScriptArguments:
-    dataset_name: str = field(default=None, metadata={"help": "the dataset name"})
+    # dataset_name: str = field(default=None, metadata={"help": "the dataset name"})
     keep_columns: Optional[List[str]] = field(default=None, metadata={"help": "if specified, which columns of the dataset to use"})
-    dataset_train_split: str = field(default="train", metadata={"help": "The dataset split to use for training"})
-    dataset_test_split: str = field(default="test", metadata={"help": "The dataset split to use for evaluation"})
+    # dataset_train_split: str = field(default="train", metadata={"help": "The dataset split to use for training"})
+    # dataset_test_split: str = field(default="test", metadata={"help": "The dataset split to use for evaluation"})
     ignore_bias_buffers: bool = field(
         default=False,
         metadata={
@@ -209,7 +209,7 @@ class DPOScriptArguments:
         },
     )
     config: str = field(default=None, metadata={"help": "Path to the optional config file"})
-    gradient_checkpointing_use_reentrant: bool = field(
-        default=False,
-        metadata={"help": "Whether to apply `use_reentrant` for gradient_checkpointing"},
-    )
+    # gradient_checkpointing_use_reentrant: bool = field(
+    #     default=False,
+    #     metadata={"help": "Whether to apply `use_reentrant` for gradient_checkpointing"},
+    # )

@@ -11,6 +11,15 @@ def construct_causal_mask(seq_len, compile=False):
     )
     return block_mask
 
+def construct_causal_mask_with_packing(sequence_id, batch_size, seq_len, index_seq_len, compile=False):
+    """Simple causal block mask for packed causal LMs"""
+    def document_causal_mask(b, h, q_idx, kv_idx):
+        return (q_idx >= kv_idx) & (sequence_id[b * index_seq_len + q_idx] == sequence_id[b * index_seq_len + kv_idx])
+
+    block_mask = create_block_mask(
+        document_causal_mask, B=batch_size, H=None, Q_LEN=seq_len, KV_LEN=seq_len, _compile=compile
+    )
+    return block_mask
 
 def construct_dpo_mask(chosen_index, rejected_index, seq_len, compile=False):
     """Block-sparse mask for prefix shared inputs"""
