@@ -107,7 +107,7 @@ if __name__ == "__main__":
     # Generate random text for prompt, chosen, and rejected
     prompt = "This is a random prompt text. Predict next numbers."
     chosen = "7, 15, 29, 50. This is a chosen random text."
-    rejected = "22, 131, 90, 33. This is a rejected random text."
+    rejected = "22, 131, 90, 33, 209. This is a rejected random text."
 
     # Encode sequences
     prompt_tokens = tokenizer.encode(prompt)
@@ -150,8 +150,23 @@ if __name__ == "__main__":
         0
     )
 
-    causal_chosen_mask = construct_causal_mask(len(causal_chosen_tokens))
-    causal_rejected_mask = construct_causal_mask(len(causal_rejected_tokens))
+    sequence_id_causal_chosen = torch.zeros(batch_size * seq_len, dtype=torch.long, device='cuda')
+    sequence_id_causal_chosen[len(prompt_tokens + chosen_tokens):] = -1  # Set padding tokens to -1
+    causal_chosen_mask = construct_causal_mask_with_packing(
+        sequence_id_causal_chosen,
+        batch_size,
+        len(causal_chosen_tokens),
+        len(causal_chosen_tokens)
+    )
+
+    sequence_id_causal_rejected = torch.zeros(batch_size * seq_len, dtype=torch.long, device='cuda')
+    sequence_id_causal_rejected[len(prompt_tokens + rejected_tokens):] = -1  # Set padding tokens to -1
+    causal_rejected_mask = construct_causal_mask_with_packing(
+        sequence_id_causal_rejected,
+        batch_size,
+        len(causal_rejected_tokens),
+        0
+    )
 
 
     # Visualization function
