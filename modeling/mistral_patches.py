@@ -99,9 +99,9 @@ class MistralForCausalLMFlexAttn(MistralForCausalLM):
     
     def _set_flex_attention_compiled(self):
         # explicit backend for clarity
-        compiled_flex_attn = torch.compile(flex_attention, backend="inductor")
+        # compiled_flex_attn = torch.compile(flex_attention, backend="inductor")
         for layer in self.model.layers:
-            layer.self_attn.flex_attention_compiled = compiled_flex_attn
+            layer.self_attn.flex_attention_compiled = flex_attention
 
     def _update_causal_mask(
         self,

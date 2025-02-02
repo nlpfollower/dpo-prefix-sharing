@@ -576,12 +576,12 @@ class DPOTrainer(Trainer):
             )
             if args.prefix_sharing:
                 config = AutoConfig.from_pretrained(ref_model)
-                if isinstance(config, LlamaConfig):
-                    ref_model = LlamaForCausalLMFlexAttn.from_pretrained(ref_model, **ref_model_init_kwargs)
-                elif isinstance(config, MistralConfig):
-                    ref_model = MistralForCausalLMFlexAttn.from_pretrained(ref_model, **ref_model_init_kwargs)
-                else:
-                    raise NotImplementedError(f"flex attention not implemented for model {ref_model}")
+                # if isinstance(config, LlamaConfig):
+                #     ref_model = LlamaForCausalLMFlexAttn.from_pretrained(ref_model, **ref_model_init_kwargs)
+                # elif isinstance(config, MistralConfig):
+                #     ref_model = MistralForCausalLMFlexAttn.from_pretrained(ref_model, **ref_model_init_kwargs)
+                # else:
+                #     raise NotImplementedError(f"flex attention not implemented for model {ref_model}")
             else:
                 ref_model = AutoModelForCausalLM.from_pretrained(ref_model, **ref_model_init_kwargs)
 
@@ -817,10 +817,10 @@ class DPOTrainer(Trainer):
                 "You passed `disable_dropout` to the DPOTrainer, the value you passed will override the one in the `DPOConfig`."
             )
             args.disable_dropout = disable_dropout
-        if args.disable_dropout:
-            disable_dropout_in_model(model)
-            if self.ref_model is not None:
-                disable_dropout_in_model(self.ref_model)
+        # if args.disable_dropout:
+        #     disable_dropout_in_model(model)
+        #     if self.ref_model is not None:
+        #         disable_dropout_in_model(self.ref_model)
 
         self.max_length = args.max_length
         self.generate_during_eval = args.generate_during_eval
@@ -894,56 +894,57 @@ class DPOTrainer(Trainer):
             )
             args.dataset_num_proc = dataset_num_proc
         self.dataset_num_proc = args.dataset_num_proc
+        model.half()
 
         # Compute that only on the main process for faster data processing.
         # see: https://github.com/huggingface/trl/pull/1255
-        with PartialState().local_main_process_first():
-            # Extract the prompt if needed, and apply the chat template if needed
-            train_dataset = train_dataset.map(maybe_extract_prompt, num_proc=args.dataset_num_proc)
-            train_dataset = train_dataset.map(
-                maybe_apply_chat_template, fn_kwargs={"tokenizer": processing_class}, num_proc=args.dataset_num_proc
-            )
-            if eval_dataset is not None:
-                eval_dataset = eval_dataset.map(maybe_extract_prompt, num_proc=args.dataset_num_proc)
-                eval_dataset = eval_dataset.map(
-                    maybe_apply_chat_template,
-                    fn_kwargs={"tokenizer": processing_class},
-                    num_proc=args.dataset_num_proc,
-                )
-
-            # tokenize the dataset, lower writer batch size to avoid OOM (frequent in vision models)
-            fn_kwargs = {
-                "tokenizer": self.processing_class,
-                "args": args,
-                "processor": self.processor if self.is_vision_model else None,
-                "model": model if self.is_encoder_decoder else None,
-            }
-            train_dataset = train_dataset.map(
-                _tokenize,
-                fn_kwargs=fn_kwargs,
-                batched=True,
-                with_indices=True,
-                num_proc=self.dataset_num_proc,
-                writer_batch_size=10,
-                desc="Tokenizing train dataset",
-            )
-            if eval_dataset is not None:
-                eval_dataset = eval_dataset.map(
-                    _tokenize,
-                    fn_kwargs=fn_kwargs,
-                    batched=True,
-                    with_indices=True,
-                    num_proc=self.dataset_num_proc,
-                    writer_batch_size=10,
-                    desc="Tokenizing eval dataset",
-                )
+        # with PartialState().local_main_process_first():
+        #     # Extract the prompt if needed, and apply the chat template if needed
+        #     train_dataset = train_dataset.map(maybe_extract_prompt, num_proc=args.dataset_num_proc)
+        #     train_dataset = train_dataset.map(
+        #         maybe_apply_chat_template, fn_kwargs={"tokenizer": processing_class}, num_proc=args.dataset_num_proc
+        #     )
+        #     if eval_dataset is not None:
+        #         eval_dataset = eval_dataset.map(maybe_extract_prompt, num_proc=args.dataset_num_proc)
+        #         eval_dataset = eval_dataset.map(
+        #             maybe_apply_chat_template,
+        #             fn_kwargs={"tokenizer": processing_class},
+        #             num_proc=args.dataset_num_proc,
+        #         )
+        #
+        #     # tokenize the dataset, lower writer batch size to avoid OOM (frequent in vision models)
+        #     fn_kwargs = {
+        #         "tokenizer": self.processing_class,
+        #         "args": args,
+        #         "processor": self.processor if self.is_vision_model else None,
+        #         "model": model if self.is_encoder_decoder else None,
+        #     }
+        #     train_dataset = train_dataset.map(
+        #         _tokenize,
+        #         fn_kwargs=fn_kwargs,
+        #         batched=True,
+        #         with_indices=True,
+        #         num_proc=self.dataset_num_proc,
+        #         writer_batch_size=10,
+        #         desc="Tokenizing train dataset",
+        #     )
+        #     if eval_dataset is not None:
+        #         eval_dataset = eval_dataset.map(
+        #             _tokenize,
+        #             fn_kwargs=fn_kwargs,
+        #             batched=True,
+        #             with_indices=True,
+        #             num_proc=self.dataset_num_proc,
+        #             writer_batch_size=10,
+        #             desc="Tokenizing eval dataset",
+        #         )
 
         super().__init__(
             model=model,
             args=args,
             data_collator=data_collator,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
+            train_dataset='',
+            eval_dataset='',
             processing_class=processing_class,
             model_init=model_init,
             compute_metrics=compute_metrics,
@@ -968,20 +969,20 @@ class DPOTrainer(Trainer):
                     "You cannot use `precompute_ref_log_probs=True` with Deepspeed ZeRO-3. Please set `precompute_ref_log_probs=False`."
                 )
 
-        if self.ref_model is None:
-            if not (self.is_peft_model or self.precompute_ref_log_probs):
-                raise ValueError(
-                    "No reference model and model is not a Peft model. Try setting `precompute_ref_log_probs=True`"
-                )
-            if args.sync_ref_model:
-                raise ValueError(
-                    "You currently cannot use `ref_model=None` with TR-DPO method. Please provide `ref_model`."
-                )
-        else:
-            if self.is_deepspeed_enabled:
-                self.ref_model = self._prepare_deepspeed(self.ref_model)
-            else:
-                self.ref_model = self.accelerator.prepare_model(self.ref_model, evaluation_mode=True)
+        # if self.ref_model is None:
+        #     if not (self.is_peft_model or self.precompute_ref_log_probs):
+        #         raise ValueError(
+        #             "No reference model and model is not a Peft model. Try setting `precompute_ref_log_probs=True`"
+        #         )
+        #     if args.sync_ref_model:
+        #         raise ValueError(
+        #             "You currently cannot use `ref_model=None` with TR-DPO method. Please provide `ref_model`."
+        #         )
+        # else:
+        #     if self.is_deepspeed_enabled:
+        #         self.ref_model = self._prepare_deepspeed(self.ref_model)
+        #     else:
+        #         self.ref_model = self.accelerator.prepare_model(self.ref_model, evaluation_mode=True)
 
         if args.sync_ref_model:
             if precompute_ref_log_probs:
